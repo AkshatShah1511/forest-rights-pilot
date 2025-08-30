@@ -13,7 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-function MapContent() {
+export function MapContainer() {
   const { mapState, setSelectedFeature } = useAppStore();
 
   const { data: ifrData } = useQuery({
@@ -59,85 +59,6 @@ function MapContent() {
   };
 
   return (
-    <>
-      {/* Base tile layer */}
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      />
-
-      {/* IFR Layer */}
-      {mapState.selectedLayers.includes('ifr') && ifrData && (
-        <GeoJSON
-          data={ifrData}
-          style={getLayerStyle('ifr')}
-          onEachFeature={(feature, layer) => {
-            layer.on('click', (e) => {
-              handleFeatureClick(feature, e.latlng);
-            });
-            layer.bindTooltip(`IFR: ${feature.properties.pattaId}`);
-          }}
-        />
-      )}
-
-      {/* CR Layer */}
-      {mapState.selectedLayers.includes('cr') && crData && (
-        <GeoJSON
-          data={crData}
-          style={getLayerStyle('cr')}
-          onEachFeature={(feature, layer) => {
-            layer.on('click', (e) => {
-              handleFeatureClick(feature, e.latlng);
-            });
-            layer.bindTooltip(`CR: ${feature.properties.pattaId}`);
-          }}
-        />
-      )}
-
-      {/* CFR Layer */}
-      {mapState.selectedLayers.includes('cfr') && cfrData && (
-        <GeoJSON
-          data={cfrData}
-          style={getLayerStyle('cfr')}
-          onEachFeature={(feature, layer) => {
-            layer.on('click', (e) => {
-              handleFeatureClick(feature, e.latlng);
-            });
-            layer.bindTooltip(`CFR: ${feature.properties.pattaId}`);
-          }}
-        />
-      )}
-
-      {/* Assets Layer */}
-      {mapState.selectedLayers.includes('assets') && assetsData && (
-        <GeoJSON
-          data={assetsData}
-          style={getLayerStyle('assets')}
-          pointToLayer={(feature, latlng) => {
-            const icon = L.divIcon({
-              className: 'custom-div-icon',
-              html: `<div style="background: hsl(var(--info)); width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
-              iconSize: [12, 12],
-              iconAnchor: [6, 6]
-            });
-            return L.marker(latlng, { icon });
-          }}
-          onEachFeature={(feature, layer) => {
-            layer.on('click', (e) => {
-              handleFeatureClick(feature, e.latlng);
-            });
-            layer.bindTooltip(`${feature.properties.assetType}: ${feature.properties.name}`);
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-export function MapContainer() {
-  const { mapState } = useAppStore();
-
-  return (
     <div className="w-full h-full">
       <LeafletMapContainer
         center={mapState.mapCenter}
@@ -145,7 +66,76 @@ export function MapContainer() {
         className="w-full h-full"
         zoomControl={false}
       >
-        <MapContent />
+        {/* Base tile layer */}
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+
+        {/* IFR Layer */}
+        {mapState.selectedLayers.includes('ifr') && ifrData && (
+          <GeoJSON
+            data={ifrData}
+            style={getLayerStyle('ifr')}
+            onEachFeature={(feature, layer) => {
+              layer.on('click', (e) => {
+                handleFeatureClick(feature, e.latlng);
+              });
+              layer.bindTooltip(`IFR: ${feature.properties.pattaId}`);
+            }}
+          />
+        )}
+
+        {/* CR Layer */}
+        {mapState.selectedLayers.includes('cr') && crData && (
+          <GeoJSON
+            data={crData}
+            style={getLayerStyle('cr')}
+            onEachFeature={(feature, layer) => {
+              layer.on('click', (e) => {
+                handleFeatureClick(feature, e.latlng);
+              });
+              layer.bindTooltip(`CR: ${feature.properties.pattaId}`);
+            }}
+          />
+        )}
+
+        {/* CFR Layer */}
+        {mapState.selectedLayers.includes('cfr') && cfrData && (
+          <GeoJSON
+            data={cfrData}
+            style={getLayerStyle('cfr')}
+            onEachFeature={(feature, layer) => {
+              layer.on('click', (e) => {
+                handleFeatureClick(feature, e.latlng);
+              });
+              layer.bindTooltip(`CFR: ${feature.properties.pattaId}`);
+            }}
+          />
+        )}
+
+        {/* Assets Layer */}
+        {mapState.selectedLayers.includes('assets') && assetsData && (
+          <GeoJSON
+            data={assetsData}
+            style={getLayerStyle('assets')}
+            pointToLayer={(feature, latlng) => {
+              const icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background: #0891b2; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+              });
+              return L.marker(latlng, { icon });
+            }}
+            onEachFeature={(feature, layer) => {
+              layer.on('click', (e) => {
+                handleFeatureClick(feature, e.latlng);
+              });
+              layer.bindTooltip(`${feature.properties.assetType}: ${feature.properties.name}`);
+            }}
+          />
+        )}
       </LeafletMapContainer>
     </div>
   );
