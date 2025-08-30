@@ -1,0 +1,37 @@
+[
+  {
+    "id": "JJM",
+    "name": "Jal Jeevan Mission",
+    "eligibility": ["Low Water Index < 0.4", "Low waterBodiesCount per 100 households"],
+    "evidenceKeys": ["groundwaterIndex", "waterBodiesCount"],
+    "weights": { "lowWater": 2, "agri": 0, "degradation": 0, "poverty": 1 }
+  },
+  {
+    "id": "PMKISAN",
+    "name": "PM-KISAN",
+    "eligibility": ["Agriculture area > 50 ha"],
+    "evidenceKeys": ["agriAreaHa"],
+    "weights": { "lowWater": 0, "agri": 2, "degradation": 0, "poverty": 1 }
+  },
+  {
+    "id": "CAMPA",
+    "name": "CAMPA Afforestation",
+    "eligibility": ["Forest degradation level High"],
+    "evidenceKeys": ["forestDegradationLevel"],
+    "weights": { "lowWater": 0, "agri": 0, "degradation": 2, "poverty": 1 }
+  },
+  {
+    "id": "MGNREGA-WC",
+    "name": "MGNREGA - Water Conservation",
+    "eligibility": ["Seasonal water scarcity", "Suitable marginal land"],
+    "evidenceKeys": ["groundwaterIndex", "agriAreaHa"],
+    "weights": { "lowWater": 1, "agri": 1, "degradation": 1, "poverty": 1 }
+  },
+  {
+    "id": "DAJGUA",
+    "name": "DAJGUA (Composite: 3 Ministries)",
+    "eligibility": ["Composite: Low water index, agricultural potential, tribal priority"],
+    "evidenceKeys": ["groundwaterIndex","agriAreaHa","povertyScore"],
+    "weights": { "lowWater": 1, "agri": 1, "degradation": 0, "poverty": 2 }
+  }
+]

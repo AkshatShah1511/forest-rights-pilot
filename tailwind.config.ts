@@ -26,7 +26,8 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					hover: 'hsl(var(--primary-hover))'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -61,7 +62,46 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))',
+					light: 'hsl(var(--success-light))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))',
+					light: 'hsl(var(--warning-light))'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))',
+					light: 'hsl(var(--info-light))'
+				},
+				priority: {
+					high: 'hsl(var(--priority-high))',
+					medium: 'hsl(var(--priority-medium))',
+					low: 'hsl(var(--priority-low))'
+				},
+				layers: {
+					ifr: 'hsl(var(--ifr-color))',
+					cr: 'hsl(var(--cr-color))',
+					cfr: 'hsl(var(--cfr-color))',
+					village: 'hsl(var(--village-color))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-success': 'var(--gradient-success)',
+				'gradient-card': 'var(--gradient-card)'
+			},
+			boxShadow: {
+				'soft': 'var(--shadow-soft)',
+				'medium': 'var(--shadow-medium)',
+				'strong': 'var(--shadow-strong)'
+			},
+			transitionProperty: {
+				'smooth': 'var(--transition-smooth)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

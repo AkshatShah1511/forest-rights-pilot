@@ -1,0 +1,5 @@
+[
+  { "pattaId": "IFR-MH-0001", "villageId": "V001", "holder": "Sukhlal Gond", "gender": "M", "type": "IFR", "areaHa": 1.8, "status": "Approved", "coords": [80.412, 19.652], "docs": ["/mock/docs/sample-ifr.pdf"] },
+  { "pattaId": "CFR-MH-1001", "villageId": "V001", "holder": "Bhamragad Gram Sabha", "gender": "-", "type": "CFR", "areaHa": 720.0, "status": "Approved", "coords": [80.43, 19.67], "docs": ["/mock/docs/sample-cfr.pdf"] },
+  { "pattaId": "IFR-OD-0101", "villageId": "V002", "holder": "Laxmi Ho", "gender": "F", "type": "IFR", "areaHa": 1.2, "status": "Pending", "coords": [86.12, 21.95], "docs": ["/mock/docs/sample-ifr2.pdf"] }
+]

@@ -1,0 +1,7 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "geometry": { "type": "Point", "coordinates": [80.412, 19.652] }, "properties": { "villageId": "V001", "assetType": "Pond", "name": "Pond-1" } },
+    { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[80.415,19.651],[80.417,19.651],[80.417,19.653],[80.415,19.653],[80.415,19.651]]] }, "properties": { "villageId": "V001", "assetType": "Farm", "name": "Farm-3" } }
+  ]
+}

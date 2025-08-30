@@ -1,0 +1,6 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "geometry": { "type": "Polygon", "coordinates": [[[80.42,19.66],[80.44,19.66],[80.44,19.68],[80.42,19.68],[80.42,19.66]]] }, "properties": { "villageId": "V001", "pattaId": "CFR-MH-1001", "status": "Approved" } }
+  ]
+}

@@ -1,73 +1,138 @@
-# Welcome to your Lovable project
+# FRA Atlas & Decision Support System - Prototype
 
-## Project info
+A comprehensive Forest Rights Act (FRA) Atlas and Decision Support System prototype built with React, TypeScript, and modern web technologies.
 
-**URL**: https://lovable.dev/projects/46a519cc-6ee7-4ce9-a44b-c993fd030c05
+## 🚀 Quick Start
 
-## How can I edit this code?
+```bash
+# Install dependencies
+npm install
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/46a519cc-6ee7-4ce9-a44b-c993fd030c05) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
+
+# Build for production (optional)
+npm run build
 ```
 
-**Edit a file directly in GitHub**
+## 🏗️ Tech Stack
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: TailwindCSS, shadcn/ui components
+- **State Management**: Zustand, React Query
+- **Maps**: Leaflet, React Leaflet (with OpenStreetMap fallback)
+- **Charts**: Recharts
+- **Routing**: React Router DOM
 
-**Use GitHub Codespaces**
+## 📱 Features
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Dashboard
+- KPI cards showing claims statistics
+- State-wise progress charts
+- Monthly processing trends
+- Data quality metrics
+- Quick action buttons
 
-## What technologies are used for this project?
+### FRA Atlas
+- Interactive map with multiple layers (IFR, CR, CFR, Assets)
+- Layer toggles and opacity controls
+- Feature info drawer with details
+- Geographic and claim-based filtering
+- Search and bookmark functionality
 
-This project is built with:
+### Village Details
+- Comprehensive village profiles
+- Claims data table with export
+- Environmental trend charts
+- Asset visualization
+- Issues and overlap detection
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Decision Support System (DSS)
+- Scheme recommendation engine
+- Priority-based filtering
+- Evidence-based scoring
+- Action planning interface
+- Multi-village analysis
 
-## How can I deploy this project?
+### Document OCR/NER Viewer
+- Document upload interface (demo)
+- Named Entity Recognition highlighting
+- Metadata extraction forms
+- Text search and filtering
 
-Simply open [Lovable](https://lovable.dev/projects/46a519cc-6ee7-4ce9-a44b-c993fd030c05) and click on Share -> Publish.
+### Admin Panel
+- Dataset management (Maharashtra Demo / India Minimal)
+- Layer configuration
+- User role management
+- System information and controls
 
-## Can I connect a custom domain to my Lovable project?
+## 🗂️ Project Structure
 
-Yes, you can!
+```
+src/
+├── components/          # Reusable UI components
+├── pages/              # Page components
+├── lib/                # Utilities (API, DSS logic)
+├── store/              # Zustand state management
+├── hooks/              # Custom React hooks
+public/mock/            # Mock data files (JSON/GeoJSON)
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📊 Mock Data
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+All data is contained in `/public/mock/` for demo purposes:
+- `states.json` - State master data
+- `districts.json` - District boundaries
+- `villages.json` - Village details with indicators
+- `claims.json` - FRA claims data
+- `*.geojson` - Spatial layer data
+- `schemes.json` - Government scheme definitions
+
+## 🎯 Demo Script (2-3 minutes)
+
+1. **Dashboard Overview** - Show KPIs and click state bar
+2. **Atlas Navigation** - Toggle layers, click village polygon
+3. **InfoDrawer → DSS** - Open recommendations for selected village
+4. **Action Planning** - Mark recommendation as planned
+5. **Documents** - Show OCR/NER extraction
+6. **Admin** - Switch datasets, show role management
+
+## ⚙️ Configuration
+
+### Environment Variables (Optional)
+- `MAPBOX_TOKEN` - For Mapbox tiles (fallback to OpenStreetMap if not provided)
+
+### Customization
+- Colors and themes in `src/index.css`
+- Component variants in `tailwind.config.ts`
+- Mock data in `public/mock/` directory
+
+## 🔒 Role-Based Access
+
+- **Admin**: Full access to all features
+- **Dept Officer**: Limited exports, no admin functions
+- **NGO**: Read-only access with basic exports
+
+## 📝 Development Notes
+
+- All external API calls are mocked
+- Map uses OpenStreetMap tiles by default
+- Data persists in localStorage for demo
+- Built for demo/prototype purposes only
+- Optimized for desktop viewing
+
+## 🎨 Design System
+
+Government-tech inspired design with:
+- Primary blue (#1e40af) for official elements
+- Success green for approved claims
+- Warning orange for pending items
+- Semantic color tokens throughout
+- Consistent spacing and typography
+- Accessible contrast ratios
+
+---
+
+**Version**: 1.0.0-prototype  
+**Build Date**: 2024-01-30  
+**Demo Ready**: ✅
