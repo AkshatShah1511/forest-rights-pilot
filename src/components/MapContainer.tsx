@@ -1,5 +1,4 @@
-import { useEffect, useRef } from 'react';
-import { MapContainer as LeafletMapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer as LeafletMapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import { useQuery } from '@tanstack/react-query';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -16,7 +15,6 @@ L.Icon.Default.mergeOptions({
 
 function MapContent() {
   const { mapState, setSelectedFeature } = useAppStore();
-  const map = useMap();
 
   const { data: ifrData } = useQuery({
     queryKey: ['ifr-data'],
@@ -42,10 +40,6 @@ function MapContent() {
     enabled: mapState.selectedLayers.includes('assets')
   });
 
-  useEffect(() => {
-    map.setView(mapState.mapCenter, mapState.mapZoom);
-  }, [map, mapState.mapCenter, mapState.mapZoom]);
-
   const handleFeatureClick = (feature: any, latlng: any) => {
     setSelectedFeature({
       ...feature,
@@ -56,10 +50,10 @@ function MapContent() {
 
   const getLayerStyle = (layerType: string) => {
     const styles = {
-      ifr: { color: 'hsl(var(--ifr-color))', fillColor: 'hsl(var(--ifr-color))', fillOpacity: 0.3 },
-      cr: { color: 'hsl(var(--cr-color))', fillColor: 'hsl(var(--cr-color))', fillOpacity: 0.3 },
-      cfr: { color: 'hsl(var(--cfr-color))', fillColor: 'hsl(var(--cfr-color))', fillOpacity: 0.3 },
-      assets: { color: 'hsl(var(--info))', fillColor: 'hsl(var(--info))', fillOpacity: 0.6 }
+      ifr: { color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.3 },
+      cr: { color: '#2563eb', fillColor: '#2563eb', fillOpacity: 0.3 },
+      cfr: { color: '#ca8a04', fillColor: '#ca8a04', fillOpacity: 0.3 },
+      assets: { color: '#0891b2', fillColor: '#0891b2', fillOpacity: 0.6 }
     };
     return styles[layerType as keyof typeof styles] || styles.assets;
   };
