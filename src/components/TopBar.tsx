@@ -6,7 +6,8 @@ import {
   Moon, 
   Sun,
   Command,
-  ChevronDown 
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -22,14 +23,29 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store/appStore';
 import { useTheme } from 'next-themes';
+import { useAuth } from '@/hooks/useAuth';
 
 export function TopBar() {
   const { userRole, setUserRole } = useAppStore();
   const { theme, setTheme } = useTheme();
+  const { user, profile, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleRoleChange = (role: 'Admin' | 'Dept Officer' | 'NGO') => {
+  const handleRoleChange = async (role: 'Admin' | 'Dept Officer' | 'NGO') => {
     setUserRole(role);
+    
+    // Update role in database if user is authenticated
+    if (user && profile) {
+      const { supabase } = await import('@/integrations/supabase/client');
+      await supabase
+        .from('profiles')
+        .update({ role })
+        .eq('user_id', user.id);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -121,6 +137,15 @@ export function TopBar() {
                 {userRole === 'NGO' && <Badge variant="secondary" className="text-xs">Current</Badge>}
               </span>
             </DropdownMenuItem>
+            {user && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
