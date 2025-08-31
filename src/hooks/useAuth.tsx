@@ -1,15 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useAppStore, type UserRole } from '@/store/appStore';
+
+interface User {
+  id: string;
+  email: string;
+  role: 'admin' | 'officer';
+  name: string;
+}
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   profile: any | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, role: 'admin' | 'officer') => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -17,94 +21,71 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
-  const { setUserRole } = useAppStore();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile
-          setTimeout(async () => {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            setProfile(profileData);
-            if (profileData?.role) {
-              setUserRole(profileData.role as UserRole);
-            }
-          }, 0);
-        } else {
-          setProfile(null);
-          setUserRole('NGO');
-        }
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [setUserRole]);
+    // Check for existing session in localStorage
+    const savedUser = localStorage.getItem('fra-atlas-user');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setProfile({ role: userData.role, email: userData.email, full_name: userData.name });
+    }
+    setLoading(false);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
-  };
+    // Demo authentication
+    const demoUsers = {
+      'admin@fra-atlas.gov.in': { password: 'admin123', role: 'admin', name: 'System Administrator' },
+      'officer@fra-atlas.gov.in': { password: 'officer123', role: 'officer', name: 'Field Officer' }
+    };
 
-  const signUp = async (email: string, password: string, fullName: string, role: UserRole) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const userData = demoUsers[email as keyof typeof demoUsers];
     
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          role: role,
-        }
-      }
-    });
-
-    // If signup successful, update profile with role
-    if (!error) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({ role })
-          .eq('user_id', user.id);
-      }
+    if (!userData || userData.password !== password) {
+      return { error: { message: 'Invalid email or password' } };
     }
 
-    return { error };
+    const user: User = {
+      id: `demo-${userData.role}-id`,
+      email,
+      role: userData.role,
+      name: userData.name
+    };
+
+    setUser(user);
+    setProfile({ role: user.role, email: user.email, full_name: user.name });
+    localStorage.setItem('fra-atlas-user', JSON.stringify(user));
+    
+    return { error: null };
+  };
+
+  const signUp = async (email: string, password: string, fullName: string, role: 'admin' | 'officer') => {
+    // Demo signup - just create a local user
+    const user: User = {
+      id: `demo-${role}-${Date.now()}`,
+      email,
+      role,
+      name: fullName
+    };
+
+    setUser(user);
+    setProfile({ role: user.role, email: user.email, full_name: user.name });
+    localStorage.setItem('fra-atlas-user', JSON.stringify(user));
+    
+    return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
+    localStorage.removeItem('fra-atlas-user');
   };
 
   const value = {
     user,
-    session,
     profile,
     loading,
     signIn,

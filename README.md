@@ -1,138 +1,289 @@
-# FRA Atlas & Decision Support System - Prototype
+# FRA Atlas Prototype
 
-A comprehensive Forest Rights Act (FRA) Atlas and Decision Support System prototype built with React, TypeScript, and modern web technologies.
+A comprehensive Forest Rights Act (FRA) implementation platform built with React, TypeScript, Supabase, and modern web technologies.
+
+## 🚀 Features
+
+### 🔹 Supabase Integration
+- **Live Database**: Connected to Supabase with real-time data
+- **TypeScript Types**: Auto-generated database types for type safety
+- **Custom Hooks**: Reusable hooks for claims, schemes, documents, and user management
+- **Role-based Access**: Admin and Officer roles with different permissions
+
+### 🔹 Dashboard
+- **Live KPIs**: Real-time statistics from Supabase
+- **Interactive Charts**: Monthly trends and status distribution using Recharts
+- **Skeleton Loading**: Smooth loading states for better UX
+- **Filtering**: State and status-based filtering
+
+### 🔹 Decision Support System
+- **Scheme Matching**: Automatic eligibility matching based on claim criteria
+- **Priority Scoring**: Intelligent recommendation system
+- **Evidence Tracking**: Supporting evidence for each recommendation
+- **Budget Impact**: Financial impact analysis
+
+### 🔹 Document Management
+- **OCR Integration**: Text extraction from uploaded documents
+- **Entity Highlighting**: Named entity recognition for villages, claims, applicants
+- **Search Functionality**: Full-text search across documents
+- **Metadata Management**: Structured data extraction and storage
+
+### 🔹 Admin Panel
+- **Role-based Access**: Admin-only features with proper authorization
+- **Data Management**: Dataset switching and export capabilities
+- **System Configuration**: Layer management and user role configuration
+- **Export Options**: CSV, GeoJSON, and PDF exports
+
+### 🔹 UI/UX Enhancements
+- **Dark/Light Mode**: Theme toggle with persistent preferences
+- **Global Search**: Unified search across claims, villages, and documents
+- **Skeleton Loaders**: Loading states for better perceived performance
+- **Responsive Design**: Mobile-friendly interface
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: Tailwind CSS, ShadCN/UI
+- **Database**: Supabase (PostgreSQL)
+- **Charts**: Recharts
+- **State Management**: React Hooks, Zustand
+- **Authentication**: Supabase Auth
+- **File Storage**: Supabase Storage
+- **Deployment**: Vercel/Netlify ready
+
+## 📋 Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
+- Git
 
 ## 🚀 Quick Start
 
+### 1. Clone the Repository
 ```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production (optional)
-npm run build
+git clone <repository-url>
+cd forest-rights-pilot
 ```
 
-## 🏗️ Tech Stack
+### 2. Install Dependencies
+```bash
+npm install --legacy-peer-deps
+```
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Styling**: TailwindCSS, shadcn/ui components
-- **State Management**: Zustand, React Query
-- **Maps**: Leaflet, React Leaflet (with OpenStreetMap fallback)
-- **Charts**: Recharts
-- **Routing**: React Router DOM
+### 3. Set Up Supabase
 
-## 📱 Features
+#### Option A: Use Existing Project
+The project is already configured with a Supabase project. The connection details are in:
+- `src/integrations/supabase/client.ts`
+- `supabase/config.toml`
 
-### Dashboard
-- KPI cards showing claims statistics
-- State-wise progress charts
-- Monthly processing trends
-- Data quality metrics
-- Quick action buttons
+#### Option B: Create New Supabase Project
+1. Go to [Supabase](https://supabase.com) and create a new project
+2. Update the connection details in `src/integrations/supabase/client.ts`
+3. Run the migration: `supabase/migrations/001_initial_schema.sql`
 
-### FRA Atlas
-- Interactive map with multiple layers (IFR, CR, CFR, Assets)
-- Layer toggles and opacity controls
-- Feature info drawer with details
-- Geographic and claim-based filtering
-- Search and bookmark functionality
+### 4. Run the Development Server
+```bash
+npm run dev
+```
 
-### Village Details
-- Comprehensive village profiles
-- Claims data table with export
-- Environmental trend charts
-- Asset visualization
-- Issues and overlap detection
+The application will be available at `http://localhost:8080`
 
-### Decision Support System (DSS)
-- Scheme recommendation engine
-- Priority-based filtering
-- Evidence-based scoring
-- Action planning interface
-- Multi-village analysis
+## 📊 Database Schema
 
-### Document OCR/NER Viewer
-- Document upload interface (demo)
-- Named Entity Recognition highlighting
-- Metadata extraction forms
-- Text search and filtering
+### Tables
 
-### Admin Panel
-- Dataset management (Maharashtra Demo / India Minimal)
-- Layer configuration
-- User role management
-- System information and controls
+#### Claims
+```sql
+claims (
+  id, type, state, village, area, status, date, 
+  applicant_name, tribe, poverty_index, groundwater_index, 
+  agri_area, forest_degradation
+)
+```
 
-## 🗂️ Project Structure
+#### Schemes
+```sql
+schemes (
+  id, name, eligibility, priority, evidence_keys, 
+  weights, budget, households_affected
+)
+```
+
+#### Documents
+```sql
+documents (
+  id, filename, status, uploaded_at, extracted_text, metadata
+)
+```
+
+#### Users
+```sql
+users (
+  id, role, email, name
+)
+```
+
+## 🔧 Custom Hooks
+
+### useClaims
+```typescript
+const { claims, loading, error } = useClaims({
+  state: 'Maharashtra',
+  status: 'Approved',
+  dateRange: { start: '2024-01-01', end: '2024-12-31' }
+});
+```
+
+### useSchemes
+```typescript
+const { schemes, loading, error } = useSchemes({
+  filters: { minBudget: 100000, maxPriority: 3 }
+});
+```
+
+### useDocuments
+```typescript
+const { documents, loading, error } = useDocuments({
+  searchTerm: 'village',
+  status: 'Processed'
+});
+```
+
+### useUserRole
+```typescript
+const { role, isAdmin, isOfficer, updateUserRole } = useUserRole();
+```
+
+## 🎨 UI Components
+
+### Theme Toggle
+```typescript
+import { ThemeToggle } from '@/components/ThemeToggle';
+```
+
+### Global Search
+```typescript
+import { GlobalSearch } from '@/components/GlobalSearch';
+```
+
+### Skeleton Loading
+```typescript
+import { Skeleton } from '@/components/ui/skeleton';
+```
+
+## 🔐 Authentication & Authorization
+
+### User Roles
+- **Admin**: Full access to all features including admin panel
+- **Officer**: Read-only access to most features, limited admin access
+
+### Role-based Components
+```typescript
+import { useAdminGuard } from '@/hooks/useUserRole';
+
+const { hasAccess, loading } = useAdminGuard();
+```
+
+## 📁 Project Structure
 
 ```
 src/
 ├── components/          # Reusable UI components
-├── pages/              # Page components
-├── lib/                # Utilities (API, DSS logic)
-├── store/              # Zustand state management
+│   ├── ui/             # ShadCN/UI components
+│   ├── ThemeToggle.tsx # Dark/light mode toggle
+│   └── GlobalSearch.tsx # Global search component
 ├── hooks/              # Custom React hooks
-public/mock/            # Mock data files (JSON/GeoJSON)
+│   ├── useClaims.ts    # Claims data management
+│   ├── useSchemes.ts   # Schemes data management
+│   ├── useDocuments.ts # Documents management
+│   └── useUserRole.ts  # User role management
+├── integrations/       # External service integrations
+│   └── supabase/       # Supabase configuration
+├── lib/                # Utility functions and types
+│   └── dbTypes.ts      # Database TypeScript types
+├── pages/              # Page components
+│   ├── Dashboard.tsx   # Main dashboard
+│   ├── DSS.tsx        # Decision support system
+│   ├── Documents.tsx  # Document management
+│   └── Admin.tsx      # Admin panel
+└── store/              # State management
 ```
 
-## 📊 Mock Data
+## 🚀 Deployment
 
-All data is contained in `/public/mock/` for demo purposes:
-- `states.json` - State master data
-- `districts.json` - District boundaries
-- `villages.json` - Village details with indicators
-- `claims.json` - FRA claims data
-- `*.geojson` - Spatial layer data
-- `schemes.json` - Government scheme definitions
+### Vercel
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
 
-## 🎯 Demo Script (2-3 minutes)
+### Netlify
+1. Connect your GitHub repository to Netlify
+2. Set build command: `npm run build`
+3. Set publish directory: `dist`
 
-1. **Dashboard Overview** - Show KPIs and click state bar
-2. **Atlas Navigation** - Toggle layers, click village polygon
-3. **InfoDrawer → DSS** - Open recommendations for selected village
-4. **Action Planning** - Mark recommendation as planned
-5. **Documents** - Show OCR/NER extraction
-6. **Admin** - Switch datasets, show role management
+## 🔧 Environment Variables
 
-## ⚙️ Configuration
+Create a `.env.local` file:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-### Environment Variables (Optional)
-- `MAPBOX_TOKEN` - For Mapbox tiles (fallback to OpenStreetMap if not provided)
+## 📝 API Documentation
 
-### Customization
-- Colors and themes in `src/index.css`
-- Component variants in `tailwind.config.ts`
-- Mock data in `public/mock/` directory
+### Claims Endpoints
+- `GET /claims` - Fetch all claims with optional filters
+- `POST /claims` - Create new claim
+- `PUT /claims/:id` - Update claim
+- `DELETE /claims/:id` - Delete claim
 
-## 🔒 Role-Based Access
+### Schemes Endpoints
+- `GET /schemes` - Fetch all schemes
+- `POST /schemes` - Create new scheme
+- `PUT /schemes/:id` - Update scheme
 
-- **Admin**: Full access to all features
-- **Dept Officer**: Limited exports, no admin functions
-- **NGO**: Read-only access with basic exports
+### Documents Endpoints
+- `GET /documents` - Fetch all documents
+- `POST /documents` - Upload new document
+- `PUT /documents/:id` - Update document metadata
 
-## 📝 Development Notes
+## 🤝 Contributing
 
-- All external API calls are mocked
-- Map uses OpenStreetMap tiles by default
-- Data persists in localStorage for demo
-- Built for demo/prototype purposes only
-- Optimized for desktop viewing
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a pull request
 
-## 🎨 Design System
+## 📄 License
 
-Government-tech inspired design with:
-- Primary blue (#1e40af) for official elements
-- Success green for approved claims
-- Warning orange for pending items
-- Semantic color tokens throughout
-- Consistent spacing and typography
-- Accessible contrast ratios
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Create an issue in the GitHub repository
+- Contact the development team
+- Check the documentation in `/docs`
+
+## 🔄 Changelog
+
+### v1.0.0 (Current)
+- ✅ Supabase integration
+- ✅ Role-based access control
+- ✅ Live dashboard with real-time data
+- ✅ Decision support system
+- ✅ Document management
+- ✅ Dark/light mode toggle
+- ✅ Global search functionality
+- ✅ Admin panel with role-based access
+- ✅ TypeScript types for all database tables
+- ✅ Custom hooks for data management
+- ✅ Skeleton loading states
+- ✅ Responsive design
 
 ---
 
-**Version**: 1.0.0-prototype  
-**Build Date**: 2024-01-30  
-**Demo Ready**: ✅
+**FRA Atlas Prototype** - Empowering Forest Rights Act implementation through technology.

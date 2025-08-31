@@ -48,6 +48,11 @@ export function MapContainer() {
     });
   };
 
+  const handleMapClick = () => {
+    // Open the external FRA Atlas website when the map is clicked
+    window.open('https://forest-rights-act-fr-1yxt.bolt.host/', '_blank');
+  };
+
   const getLayerStyle = (layerType: string) => {
     const styles = {
       ifr: { color: '#16a34a', fillColor: '#16a34a', fillOpacity: 0.3 },
@@ -59,12 +64,13 @@ export function MapContainer() {
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <LeafletMapContainer
         center={mapState.mapCenter}
         zoom={mapState.mapZoom}
         className="w-full h-full"
         zoomControl={false}
+        onClick={handleMapClick}
       >
         {/* Base tile layer */}
         <TileLayer
@@ -118,7 +124,6 @@ export function MapContainer() {
         {mapState.selectedLayers.includes('assets') && assetsData && (
           <GeoJSON
             data={assetsData}
-            style={getLayerStyle('assets')}
             pointToLayer={(feature, latlng) => {
               const icon = L.divIcon({
                 className: 'custom-div-icon',
@@ -137,6 +142,13 @@ export function MapContainer() {
           />
         )}
       </LeafletMapContainer>
+
+      {/* Clickable overlay with instructions */}
+      <div className="absolute bottom-4 left-4 bg-black/70 text-white p-3 rounded-lg max-w-xs">
+        <p className="text-sm">
+          💡 <strong>Tip:</strong> Click anywhere on the map to open the official FRA Atlas website
+        </p>
+      </div>
     </div>
   );
 }

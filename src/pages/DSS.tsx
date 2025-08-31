@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import api from '@/lib/api';
-import { generateRecommendations, filterRecommendations } from '@/lib/dss';
+import { useSchemes, useSchemeEligibility } from '@/hooks/useSchemes';
+import { useClaims } from '@/hooks/useClaims';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,49 +43,93 @@ export default function DSS() {
 
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
 
-  const { data: villages } = useQuery({
-    queryKey: ['villages'],
-    queryFn: api.fetchVillages
-  });
+  const { claims } = useClaims();
+  const { schemes } = useSchemes();
 
-  const { data: schemes } = useQuery({
-    queryKey: ['schemes'],
-    queryFn: api.fetchSchemes
-  });
-
-  const { data: states } = useQuery({
-    queryKey: ['states'],
-    queryFn: api.fetchStates
-  });
-
-  // Generate recommendations
+  // Generate recommendations based on claims data
   const recommendations = useMemo(() => {
-    if (!villages || !schemes) return [];
+    if (!claims || !schemes) return [];
     
-    let filteredVillages = villages;
+    let filteredClaims = claims;
     
     // Apply criteria filters
     if (filters.criteria.lowWater) {
-      filteredVillages = filteredVillages.filter((v: any) => v.groundwaterIndex < 0.4);
+      filteredClaims = filteredClaims.filter(c => c.groundwaterIndex < 0.4);
     }
     if (filters.criteria.hasAgriculture) {
-      filteredVillages = filteredVillages.filter((v: any) => v.agriAreaHa >= 50);
+      filteredClaims = filteredClaims.filter(c => c.agriArea >= 50);
     }
     if (filters.criteria.forestDegradation) {
-      filteredVillages = filteredVillages.filter((v: any) => v.forestDegradationLevel >= 0.5);
+      filteredClaims = filteredClaims.filter(c => c.forestDegradation >= 50);
     }
     if (filters.criteria.highPoverty) {
-      filteredVillages = filteredVillages.filter((v: any) => v.povertyScore >= 0.5);
+      filteredClaims = filteredClaims.filter(c => c.povertyIndex >= 0.5);
     }
 
-    const allRecommendations = generateRecommendations(filteredVillages, schemes);
+    // Generate recommendations for each claim-scheme combination
+    const allRecommendations = filteredClaims.flatMap(claim => 
+      schemes.map(scheme => {
+        const eligibility = scheme.eligibility as any;
+        let matchScore = 0;
+        const evidence: string[] = [];
+
+        // Check eligibility criteria
+        if (eligibility.povertyIndex && claim.povertyIndex >= eligibility.povertyIndex.min) {
+          matchScore += 25;
+          evidence.push(`Poverty Index: ${claim.povertyIndex} (min: ${eligibility.povertyIndex.min})`);
+        }
+        if (eligibility.groundwaterIndex && claim.groundwaterIndex <= eligibility.groundwaterIndex.max) {
+          matchScore += 25;
+          evidence.push(`Groundwater Index: ${claim.groundwaterIndex} (max: ${eligibility.groundwaterIndex.max})`);
+        }
+        if (eligibility.agriArea && claim.agriArea >= eligibility.agriArea.min) {
+          matchScore += 25;
+          evidence.push(`Agricultural Area: ${claim.agriArea} ha (min: ${eligibility.agriArea.min} ha)`);
+        }
+        if (eligibility.forestDegradation && claim.forestDegradation <= eligibility.forestDegradation.max) {
+          matchScore += 25;
+          evidence.push(`Forest Degradation: ${claim.forestDegradation}% (max: ${eligibility.forestDegradation.max}%)`);
+        }
+
+        return {
+          schemeId: scheme.id,
+          schemeName: scheme.name,
+          villageId: claim.village,
+          villageName: claim.village,
+          claimId: claim.id,
+          priority: matchScore >= 75 ? 'High' : matchScore >= 50 ? 'Medium' : 'Low',
+          matchScore,
+          evidence,
+          budget: scheme.budget,
+          householdsAffected: scheme.householdsAffected,
+          claim: claim
+        };
+      }).filter(rec => rec.matchScore > 0)
+    );
+
+    // Apply filters
+    let filteredRecommendations = allRecommendations;
     
-    return filterRecommendations(allRecommendations, {
-      villages: filters.villages,
-      priorities: filters.priorities,
-      schemes: filters.schemes
-    });
-  }, [villages, schemes, filters]);
+    if (filters.villages.length > 0) {
+      filteredRecommendations = filteredRecommendations.filter(r => 
+        filters.villages.includes(r.villageId)
+      );
+    }
+    
+    if (filters.priorities.length > 0) {
+      filteredRecommendations = filteredRecommendations.filter(r => 
+        filters.priorities.includes(r.priority)
+      );
+    }
+    
+    if (filters.schemes.length > 0) {
+      filteredRecommendations = filteredRecommendations.filter(r => 
+        filters.schemes.includes(r.schemeId)
+      );
+    }
+
+    return filteredRecommendations.sort((a, b) => b.matchScore - a.matchScore);
+  }, [claims, schemes, filters]);
 
   const groupedRecommendations = useMemo(() => {
     const grouped = {
@@ -206,16 +249,18 @@ export default function DSS() {
               </h3>
               
               <div className="space-y-2">
-                {villages?.map((village: any) => (
-                  <div key={village.id} className="flex items-center space-x-2">
+                {claims && Array.from(new Set(claims.map(c => c.village))).map((village) => (
+                  <div key={village} className="flex items-center space-x-2">
                     <Checkbox
-                      id={village.id}
-                      checked={filters.villages.includes(village.id)}
-                      onCheckedChange={() => toggleVillageFilter(village.id)}
+                      id={village}
+                      checked={filters.villages.includes(village)}
+                      onCheckedChange={() => toggleVillageFilter(village)}
                     />
-                    <label htmlFor={village.id} className="text-sm flex-1">
-                      {village.name}
-                      <span className="text-muted-foreground ml-1">({village.stateId})</span>
+                    <label htmlFor={village} className="text-sm flex-1">
+                      {village}
+                      <span className="text-muted-foreground ml-1">
+                        ({claims.filter(c => c.village === village).length} claims)
+                      </span>
                     </label>
                   </div>
                 ))}

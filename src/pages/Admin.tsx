@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Database, 
   Download, 
@@ -18,15 +19,17 @@ import {
   Eye,
   FileDown,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
-import { useAppStore } from '@/store/appStore';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/useUserRole';
 
 export default function Admin() {
-  const { currentDataset, setCurrentDataset, userRole, plannedRecommendations } = useAppStore();
+  const { role, loading: userLoading, isAdmin, isOfficer } = useUserRole();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [currentDataset, setCurrentDataset] = useState('Maharashtra-Demo');
 
   const handleDatasetLoad = async (dataset: 'Maharashtra-Demo' | 'India-Minimal') => {
     setIsLoading(true);
@@ -74,6 +77,53 @@ export default function Admin() {
     'NGO': ['read_only', 'basic_exports']
   };
 
+  // Show loading state
+  if (userLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-6 w-24" />
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  // Show access denied for non-admin users
+  if (!isAdmin) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
+            <p className="text-muted-foreground">
+              System configuration and data management
+            </p>
+          </div>
+          <Badge variant="outline" className="gap-2">
+            <Shield className="w-4 h-4" />
+            {role || 'User'}
+          </Badge>
+        </div>
+        
+        <Card>
+          <CardContent className="text-center py-12">
+            <AlertTriangle className="w-16 h-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground mb-4">
+              You don't have permission to access the admin panel. Only administrators can view this page.
+            </p>
+            <Badge variant="secondary" className="gap-2">
+              <Shield className="w-4 h-4" />
+              Required Role: Admin
+            </Badge>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -85,7 +135,7 @@ export default function Admin() {
         </div>
         <Badge variant="outline" className="gap-2">
           <Shield className="w-4 h-4" />
-          {userRole}
+          {role || 'Admin'}
         </Badge>
       </div>
 
@@ -217,38 +267,7 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-          {/* Planned Recommendations */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Planned Recommendations</CardTitle>
-              <CardDescription>
-                Recommendations that have been marked for planning
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {plannedRecommendations.length > 0 ? (
-                <div className="space-y-2">
-                  {plannedRecommendations.map((id, index) => (
-                    <div key={id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <span className="text-sm">Recommendation #{index + 1}</span>
-                        <Badge variant="secondary">{id}</Badge>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No recommendations have been planned yet.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
         </TabsContent>
 
         <TabsContent value="layers" className="space-y-6">

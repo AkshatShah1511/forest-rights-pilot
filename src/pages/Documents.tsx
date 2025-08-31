@@ -1,415 +1,463 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { extractTextFromPdf } from "@/lib/pdfUtils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Upload, 
-  Eye, 
-  Download, 
-  Search, 
-  MapPin, 
-  User, 
-  FileText, 
-  Target,
-  Save,
-  AlertCircle
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Upload, CheckCircle, AlertCircle, Clock, File, Database, Search } from 'lucide-react';
 
-// Mock document data
-const mockDocuments = [
-  {
-    id: 'doc-001',
-    name: 'IFR_Claim_Sukhlal_Gond.pdf',
-    type: 'IFR Application',
-    uploadDate: '2024-01-15',
-    status: 'Processed',
-    thumbnail: '/api/placeholder/150/200'
-  },
-  {
-    id: 'doc-002', 
-    name: 'CFR_Survey_Bhamragad.pdf',
-    type: 'CFR Survey',
-    uploadDate: '2024-01-12',
-    status: 'Processed',
-    thumbnail: '/api/placeholder/150/200'
-  },
-  {
-    id: 'doc-003',
-    name: 'Legacy_Records_Block_7.pdf',
-    type: 'Legacy Record',
-    uploadDate: '2024-01-10',
-    status: 'Processing',
-    thumbnail: '/api/placeholder/150/200'
-  }
-];
-
-// Mock extracted text with NER data
-const mockExtractedText = `FOREST RIGHTS ACT 2006
-INDIVIDUAL FOREST RIGHTS CLAIM APPLICATION
-
-Claim Application No: IFR-MH-0001
-Date of Application: 15th January 2024
-
-APPLICANT DETAILS:
-Name: Sukhlal Gond
-Father's Name: Ramesh Gond
-Gender: Male
-Age: 45 years
-Tribe: Gond
-Village: Bhamragad
-Block: Gadchiroli
-District: Gadchiroli
-State: Maharashtra
-
-LAND DETAILS:
-Survey Number: 124/2
-Area Claimed: 1.8 hectares
-Coordinates: 80.412°N, 19.652°E
-Land Use: Agricultural cultivation and residence
-
-SUPPORTING DOCUMENTS:
-1. Tribal Certificate
-2. Village Residence Proof
-3. Land Cultivation Evidence
-4. Gram Sabha Resolution
-
-Status: Approved
-Date of Approval: 28th February 2024
-Approved Area: 1.8 hectares
-
-Remarks: Claim verified through field inspection. All documents found in order.`;
-
-const nerEntities = [
-  { type: 'Holder Name', value: 'Sukhlal Gond', positions: [[92, 104]] },
-  { type: 'Village', value: 'Bhamragad', positions: [[234, 244]] },
-  { type: 'Coordinates', value: '80.412°N, 19.652°E', positions: [[350, 368]] },
-  { type: 'Claim Type', value: 'IFR', positions: [[67, 70]] },
-  { type: 'Area (ha)', value: '1.8', positions: [[320, 323], [547, 550]] },
-  { type: 'Status', value: 'Approved', positions: [[487, 495], [524, 532]] }
-];
-
-export default function Documents() {
-  const [selectedDoc, setSelectedDoc] = useState(mockDocuments[0]);
-  const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
-  const [extractedData, setExtractedData] = useState({
-    holderName: 'Sukhlal Gond',
-    village: 'Bhamragad',
-    coordinates: '80.412°N, 19.652°E',
-    claimType: 'IFR',
-    areaHa: '1.8',
-    status: 'Approved'
-  });
-  
-  const { toast } = useToast();
-
-  const handleEntityClick = (entityType: string) => {
-    setSelectedEntity(selectedEntity === entityType ? null : entityType);
+interface UploadedDocument {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  type: string;
+  uploadDate: Date;
+  status: 'processing' | 'completed' | 'error';
+  extractedText?: string;
+  metadata?: {
+    pages?: number;
+    words?: number;
+    claimType?: string;
+    applicantName?: string;
+    village?: string;
+    state?: string;
+    area?: string;
+    coordinates?: string;
   };
+  error?: string;
+}
 
-  const highlightText = (text: string) => {
-    if (!selectedEntity) return text;
+function Documents() {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Load documents from localStorage on component mount
+  useEffect(() => {
+    const savedDocs = localStorage.getItem('fra-uploaded-documents');
+    if (savedDocs) {
+      try {
+        const docs = JSON.parse(savedDocs);
+        // Convert date strings back to Date objects
+        const parsedDocs = docs.map((doc: any) => ({
+          ...doc,
+          uploadDate: new Date(doc.uploadDate),
+          file: null // File objects can't be serialized, so we'll set to null
+        }));
+        setUploadedDocuments(parsedDocs);
+      } catch (error) {
+        console.error('Error loading saved documents:', error);
+      }
+    }
+  }, []);
+
+  // Save documents to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('fra-uploaded-documents', JSON.stringify(uploadedDocuments));
+  }, [uploadedDocuments]);
+
+  const extractMetadata = (text: string, filename: string) => {
+    const metadata: any = {};
     
-    const entity = nerEntities.find(e => e.type === selectedEntity);
-    if (!entity) return text;
+    // Extract claim type from filename
+    if (filename.toLowerCase().includes('ifr')) metadata.claimType = 'IFR';
+    else if (filename.toLowerCase().includes('cfr')) metadata.claimType = 'CFR';
+    else if (filename.toLowerCase().includes('cr')) metadata.claimType = 'CR';
+    else metadata.claimType = 'Unknown';
 
-    let highlightedText = text;
-    entity.positions.forEach(([start, end]) => {
-      const before = highlightedText.substring(0, start);
-      const highlighted = highlightedText.substring(start, end);
-      const after = highlightedText.substring(end);
-      highlightedText = before + `<mark class="bg-yellow-200 dark:bg-yellow-800">${highlighted}</mark>` + after;
-    });
+    // Extract applicant name (look for patterns like "Name: [Name]")
+    const nameMatch = text.match(/Name:\s*([^\n\r]+)/i);
+    if (nameMatch) metadata.applicantName = nameMatch[1].trim();
 
-    return highlightedText;
+    // Extract village (look for patterns like "Village: [Village]")
+    const villageMatch = text.match(/Village:\s*([^\n\r]+)/i);
+    if (villageMatch) metadata.village = villageMatch[1].trim();
+
+    // Extract state (look for patterns like "State: [State]")
+    const stateMatch = text.match(/State:\s*([^\n\r]+)/i);
+    if (stateMatch) metadata.state = stateMatch[1].trim();
+
+    // Extract area (look for patterns like "Area: [Area]")
+    const areaMatch = text.match(/Area:\s*([^\n\r\s]+)\s*hectares?/i);
+    if (areaMatch) metadata.area = areaMatch[1].trim();
+
+    // Extract coordinates (look for coordinate patterns)
+    const coordMatch = text.match(/(\d+\.\d+)[°°]\s*[NS],\s*(\d+\.\d+)[°°]\s*[EW]/i);
+    if (coordMatch) metadata.coordinates = `${coordMatch[1]}°N, ${coordMatch[2]}°E`;
+
+    // Calculate word count
+    metadata.words = text.split(/\s+/).length;
+
+    return metadata;
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Data Saved",
-      description: "Extracted document data has been saved successfully.",
-    });
-  };
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      toast({
-        title: "Upload Disabled",
-        description: "File upload is disabled in this demo version.",
-        variant: "destructive"
-      });
+    // Reset states
+    setIsUploading(true);
+    setUploadStatus('idle');
+    setUploadMessage('');
+
+    try {
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        throw new Error('Please select a valid PDF file');
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('File size must be less than 10MB');
+      }
+
+      console.log("Uploaded file:", file.name);
+
+      // Create document object
+      const newDoc: UploadedDocument = {
+        id: Date.now().toString(),
+        file,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadDate: new Date(),
+        status: 'processing'
+      };
+
+      // Add to documents list
+      setUploadedDocuments(prev => [newDoc, ...prev]);
+
+      // Extract text from PDF
+      try {
+        const text = await extractTextFromPdf(file);
+        const metadata = extractMetadata(text, file.name);
+        
+        // Update document with extracted data
+        setUploadedDocuments(prev => prev.map(doc => 
+          doc.id === newDoc.id 
+            ? { ...doc, status: 'completed', extractedText: text, metadata }
+            : doc
+        ));
+
+        setUploadStatus('success');
+        setUploadMessage(`Successfully processed ${file.name}`);
+        console.log("Extracted PDF text:", text);
+        console.log("Extracted metadata:", metadata);
+        
+      } catch (parseError) {
+        console.error("Error parsing PDF:", parseError);
+        setUploadedDocuments(prev => prev.map(doc => 
+          doc.id === newDoc.id 
+            ? { ...doc, status: 'error', error: 'Failed to parse PDF' }
+            : doc
+        ));
+        throw new Error('Failed to parse PDF content');
+      }
+      
+    } catch (err) {
+      console.error("Error processing file:", err);
+      setUploadStatus('error');
+      setUploadMessage(err instanceof Error ? err.message : 'Failed to process file');
+    } finally {
+      setIsUploading(false);
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.files = e.dataTransfer.files;
+      input.accept = 'application/pdf';
+      input.onchange = (e) => handleFileUpload(e as any);
+      input.click();
+    }
+  };
+
+  const deleteDocument = (id: string) => {
+    setUploadedDocuments(prev => prev.filter(doc => doc.id !== id));
+  };
+
+  const filteredDocuments = uploadedDocuments.filter(doc =>
+    doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.metadata?.applicantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.metadata?.village?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="h-full flex">
-      {/* Left Sidebar - Document List */}
-      <div className="w-80 bg-card border-r border-border flex flex-col">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-lg font-semibold mb-4">Document OCR/NER Viewer</h2>
-          
-          {/* Upload Zone */}
-          <div className="border-2 border-dashed border-border rounded-lg p-4 text-center mb-4">
-            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Drop files here or click to upload
-            </p>
-            <Input
-              type="file"
-              accept=".pdf,.jpg,.png"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="file-upload"
-              multiple
-            />
-            <Label htmlFor="file-upload">
-              <Button variant="outline" size="sm" className="cursor-pointer" asChild>
-                <span>Browse Files</span>
-              </Button>
-            </Label>
-            <Badge variant="secondary" className="mt-2 text-xs">Demo: Upload Disabled</Badge>
-          </div>
+    <div className="p-6 space-y-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground">Document Management</h1>
+        <p className="text-muted-foreground">Upload and process PDF documents for FRA claims</p>
+      </div>
 
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input placeholder="Search documents..." className="pl-10" />
-          </div>
-        </div>
+      <Tabs defaultValue="upload" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="upload">Upload</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="data">Extracted Data</TabsTrigger>
+        </TabsList>
 
-        {/* Document Thumbnails */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-3">
-            {mockDocuments.map((doc) => (
-              <Card 
-                key={doc.id}
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  selectedDoc.id === doc.id ? 'ring-2 ring-primary' : ''
-                }`}
-                onClick={() => setSelectedDoc(doc)}
+        <TabsContent value="upload" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                PDF Upload & Processing
+              </CardTitle>
+              <CardDescription>
+                Upload PDF documents to extract text and metadata for forest rights claims
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* File Upload Area */}
+              <div
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
               >
-                <CardContent className="p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-16 bg-muted rounded flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate">{doc.name}</h4>
-                      <p className="text-xs text-muted-foreground">{doc.type}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge 
-                          variant={doc.status === 'Processed' ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {doc.status}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(doc.uploadDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
+                <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-lg font-medium mb-2">Drop your PDF here</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  or click to browse files
+                </p>
+                <Input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="pdf-upload"
+                  disabled={isUploading}
+                />
+                <Label htmlFor="pdf-upload">
+                  <Button asChild disabled={isUploading}>
+                    <span>
+                      {isUploading ? 'Processing...' : 'Choose PDF File'}
+                    </span>
+                  </Button>
+                </Label>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Maximum file size: 10MB
+                </p>
+              </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">{selectedDoc.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              {selectedDoc.type} • Uploaded {new Date(selectedDoc.uploadDate).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Eye className="w-4 h-4" />
-              View Original
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="w-4 h-4" />
-              Download
-            </Button>
-          </div>
-        </div>
+              {/* Upload Status */}
+              {uploadStatus !== 'idle' && (
+                <Alert className={uploadStatus === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+                  {uploadStatus === 'success' ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                  )}
+                  <AlertDescription className={uploadStatus === 'success' ? 'text-green-800' : 'text-red-800'}>
+                    {uploadMessage}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Split View */}
-        <div className="flex-1 flex">
-          {/* Original Document View */}
-          <div className="flex-1 p-4">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle className="text-lg">Original Document</CardTitle>
-                <CardDescription>Scanned document image</CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 flex items-center justify-center bg-muted/20 rounded-lg">
-                <div className="text-center">
-                  <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    Document viewer would display here
-                  </p>
-                  <Badge variant="secondary" className="mt-2">Mock Preview</Badge>
+        <TabsContent value="documents" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <File className="w-5 h-5" />
+                Recent Uploads
+              </CardTitle>
+              <CardDescription>
+                Your recently uploaded and processed documents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Search */}
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search documents by name, applicant, or village..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Extracted Content */}
-          <div className="flex-1 p-4 border-l border-border">
-            <Tabs defaultValue="extracted" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="extracted">Extracted Text</TabsTrigger>
-                <TabsTrigger value="metadata">Metadata Form</TabsTrigger>
-              </TabsList>
+              {/* Documents List */}
+              {filteredDocuments.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No documents uploaded yet.</p>
+                  <p className="text-sm">Start by uploading your first PDF document.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredDocuments.map((doc) => (
+                    <div key={doc.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            <span className="font-medium">{doc.name}</span>
+                            <Badge variant={doc.status === 'completed' ? 'default' : doc.status === 'processing' ? 'secondary' : 'destructive'}>
+                              {doc.status}
+                            </Badge>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                            <div>
+                              <span className="font-medium">Size:</span> {(doc.size / 1024 / 1024).toFixed(2)} MB
+                            </div>
+                            <div>
+                              <span className="font-medium">Uploaded:</span> {doc.uploadDate.toLocaleDateString()}
+                            </div>
+                            {doc.metadata?.claimType && (
+                              <div>
+                                <span className="font-medium">Type:</span> {doc.metadata.claimType}
+                              </div>
+                            )}
+                            {doc.metadata?.applicantName && (
+                              <div>
+                                <span className="font-medium">Applicant:</span> {doc.metadata.applicantName}
+                              </div>
+                            )}
+                          </div>
 
-              <TabsContent value="extracted" className="flex-1 space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Target className="w-5 h-5" />
-                      Named Entity Recognition
-                    </CardTitle>
-                    <CardDescription>
-                      Click on entity types to highlight them in the text
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {nerEntities.map((entity) => (
+                          {doc.error && (
+                            <div className="mt-2 text-sm text-red-600">
+                              Error: {doc.error}
+                            </div>
+                          )}
+                        </div>
+
                         <Button
-                          key={entity.type}
-                          variant={selectedEntity === entity.type ? "default" : "outline"}
+                          variant="ghost"
                           size="sm"
-                          onClick={() => handleEntityClick(entity.type)}
-                          className="gap-2"
+                          onClick={() => deleteDocument(doc.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          {entity.type === 'Holder Name' && <User className="w-3 h-3" />}
-                          {entity.type === 'Village' && <MapPin className="w-3 h-3" />}
-                          {entity.type === 'Coordinates' && <Target className="w-3 h-3" />}
-                          {entity.type}
-                          <Badge variant="secondary" className="ml-1 text-xs">
-                            {entity.positions.length}
-                          </Badge>
+                          Delete
                         </Button>
-                      ))}
-                    </div>
-
-                    <Separator className="mb-4" />
-
-                    <ScrollArea className="h-96 border rounded-lg p-4 bg-muted/20">
-                      <div 
-                        className="text-sm font-mono leading-relaxed whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: highlightText(mockExtractedText) }}
-                      />
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="metadata" className="flex-1 space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Extracted Metadata</CardTitle>
-                    <CardDescription>
-                      Structured data extracted from the document
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="holderName">Holder Name</Label>
-                        <Input
-                          id="holderName"
-                          value={extractedData.holderName}
-                          onChange={(e) => setExtractedData(prev => ({ ...prev, holderName: e.target.value }))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="village">Village</Label>
-                        <Input
-                          id="village"
-                          value={extractedData.village}
-                          onChange={(e) => setExtractedData(prev => ({ ...prev, village: e.target.value }))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="coordinates">Coordinates</Label>
-                        <Input
-                          id="coordinates"
-                          value={extractedData.coordinates}
-                          onChange={(e) => setExtractedData(prev => ({ ...prev, coordinates: e.target.value }))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="claimType">Claim Type</Label>
-                        <Input
-                          id="claimType"
-                          value={extractedData.claimType}
-                          onChange={(e) => setExtractedData(prev => ({ ...prev, claimType: e.target.value }))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="areaHa">Area (ha)</Label>
-                        <Input
-                          id="areaHa"
-                          type="number"
-                          step="0.1"
-                          value={extractedData.areaHa}
-                          onChange={(e) => setExtractedData(prev => ({ ...prev, areaHa: e.target.value }))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
-                        <Input
-                          id="status"
-                          value={extractedData.status}
-                          onChange={(e) => setExtractedData(prev => ({ ...prev, status: e.target.value }))}
-                        />
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-                    <Separator />
+        <TabsContent value="data" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="w-5 h-5" />
+                Extracted Data & Metadata
+              </CardTitle>
+              <CardDescription>
+                View extracted text and structured metadata from processed documents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {uploadedDocuments.filter(doc => doc.status === 'completed').length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Database className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No processed documents available.</p>
+                  <p className="text-sm">Upload and process PDFs to see extracted data here.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {uploadedDocuments
+                    .filter(doc => doc.status === 'completed')
+                    .map((doc) => (
+                      <div key={doc.id} className="border rounded-lg p-4">
+                        <h3 className="font-semibold mb-3 flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          {doc.name}
+                        </h3>
 
-                    <div className="flex items-center gap-2 p-3 bg-info-light rounded-lg">
-                      <AlertCircle className="w-4 h-4 text-info" />
-                      <p className="text-sm text-info-foreground">
-                        Data validation successful. All required fields extracted.
-                      </p>
-                    </div>
+                        {/* Metadata Section */}
+                        {doc.metadata && (
+                          <div className="mb-4">
+                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Extracted Metadata</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {doc.metadata.claimType && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">Claim Type</span>
+                                  <div className="font-medium">{doc.metadata.claimType}</div>
+                                </div>
+                              )}
+                              {doc.metadata.applicantName && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">Applicant</span>
+                                  <div className="font-medium">{doc.metadata.applicantName}</div>
+                                </div>
+                              )}
+                              {doc.metadata.village && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">Village</span>
+                                  <div className="font-medium">{doc.metadata.village}</div>
+                                </div>
+                              )}
+                              {doc.metadata.state && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">State</span>
+                                  <div className="font-medium">{doc.metadata.state}</div>
+                                </div>
+                              )}
+                              {doc.metadata.area && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">Area</span>
+                                  <div className="font-medium">{doc.metadata.area} ha</div>
+                                </div>
+                              )}
+                              {doc.metadata.coordinates && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">Coordinates</span>
+                                  <div className="font-medium">{doc.metadata.coordinates}</div>
+                                </div>
+                              )}
+                              {doc.metadata.words && (
+                                <div className="bg-muted p-2 rounded">
+                                  <span className="text-xs text-muted-foreground">Word Count</span>
+                                  <div className="font-medium">{doc.metadata.words}</div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                    <div className="flex gap-2">
-                      <Button onClick={handleSave} className="gap-2">
-                        <Save className="w-4 h-4" />
-                        Save Metadata
-                      </Button>
-                      <Button variant="outline" className="gap-2">
-                        <Download className="w-4 h-4" />
-                        Export as JSON
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-      </div>
+                        {/* Extracted Text Section */}
+                        {doc.extractedText && (
+                          <div>
+                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Extracted Text</h4>
+                            <div className="bg-muted p-3 rounded-lg max-h-64 overflow-y-auto">
+                              <pre className="text-sm whitespace-pre-wrap font-mono">{doc.extractedText}</pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
+
+export default Documents;

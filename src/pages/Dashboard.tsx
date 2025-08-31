@@ -1,29 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import api from '@/lib/api';
 import { KPICard } from '@/components/KPICard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { MapPin, Download, FileUp, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useClaimsStats, useMonthlyTrends } from '@/hooks/useClaims';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const { data: kpis } = useQuery({
-    queryKey: ['dashboard-kpis'],
-    queryFn: api.fetchDashboardKPIs
-  });
-
-  const { data: monthlyData } = useQuery({
-    queryKey: ['monthly-processing'],
-    queryFn: api.fetchMonthlyProcessingData
-  });
-
-  const { data: stateProgress } = useQuery({
-    queryKey: ['state-progress'],
-    queryFn: api.fetchStateProgress
-  });
+  const { stats: kpis, loading: kpisLoading } = useClaimsStats();
+  const { trends: monthlyData, loading: trendsLoading } = useMonthlyTrends();
 
   const dataQualityData = [
     { name: 'Digitized', value: 78, color: 'hsl(var(--success))' },
@@ -49,51 +37,81 @@ export default function Dashboard() {
 
       {/* KPIs Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard 
-          title="Total Claims" 
-          value={kpis?.totalClaims?.toLocaleString() || '0'} 
-          description="Across all states"
-          trend="+2.3% from last month"
-        />
-        <KPICard 
-          title="Claims Approved" 
-          value={`${kpis?.approvalRate || 0}%`} 
-          description="Approval rate"
-          trend="+1.5% from last month"
-        />
-        <KPICard 
-          title="Villages Covered" 
-          value={kpis?.villagesCovered?.toLocaleString() || '0'} 
-          description="Villages with claims"
-          trend="+12 new villages"
-        />
-        <KPICard 
-          title="CFR Area" 
-          value={`${kpis?.cfrAreaHa?.toLocaleString() || 0} ha`} 
-          description="Community forest rights"
-          trend="+156 ha approved"
-        />
+        {kpisLoading ? (
+          <>
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+          </>
+        ) : (
+          <>
+            <KPICard 
+              title="Total Claims" 
+              value={kpis.total.toLocaleString()} 
+              description="Across all states"
+              trend="+2.3% from last month"
+            />
+            <KPICard 
+              title="Claims Approved" 
+              value={`${kpis.approvalRate}%`} 
+              description="Approval rate"
+              trend="+1.5% from last month"
+            />
+            <KPICard 
+              title="Pending Claims" 
+              value={kpis.pending.toLocaleString()} 
+              description="Awaiting review"
+              trend="+12 new claims"
+            />
+            <KPICard 
+              title="CFR Area" 
+              value={`${kpis.totalCFRArea.toLocaleString()} ha`} 
+              description="Community forest rights"
+              trend="+156 ha approved"
+            />
+          </>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* State Progress Chart */}
+        {/* Claims Status Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Progress by State</CardTitle>
-            <CardDescription>Claims approved, pending, and rejected</CardDescription>
+            <CardTitle>Claims Status Distribution</CardTitle>
+            <CardDescription>Breakdown of claim statuses</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stateProgress}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="state" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="approved" stackId="a" fill="hsl(var(--success))" />
-                <Bar dataKey="pending" stackId="a" fill="hsl(var(--warning))" />
-                <Bar dataKey="rejected" stackId="a" fill="hsl(var(--destructive))" />
-              </BarChart>
-            </ResponsiveContainer>
+            {kpisLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Approved', value: kpis.approved, color: 'hsl(var(--success))' },
+                      { name: 'Pending', value: kpis.pending, color: 'hsl(var(--warning))' },
+                      { name: 'Rejected', value: kpis.rejected, color: 'hsl(var(--destructive))' }
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {[
+                      { name: 'Approved', value: kpis.approved, color: 'hsl(var(--success))' },
+                      { name: 'Pending', value: kpis.pending, color: 'hsl(var(--warning))' },
+                      { name: 'Rejected', value: kpis.rejected, color: 'hsl(var(--destructive))' }
+                    ].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [value, 'Claims']} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -104,21 +122,25 @@ export default function Dashboard() {
             <CardDescription>Processing trend over the last 12 months</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="processed" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {trendsLoading ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line 
+                    type="monotone" 
+                    dataKey="processed" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--primary))' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 

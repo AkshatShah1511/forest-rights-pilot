@@ -8,27 +8,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { type UserRole } from '@/store/appStore';
-import { LogIn, UserPlus, Shield, Users, Building } from 'lucide-react';
+import { LogIn, UserPlus, Shield, Users, Building, MapPin, Eye, EyeOff } from 'lucide-react';
 
 const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<UserRole>('NGO');
+  const [role, setRole] = useState<'admin' | 'officer'>('officer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Default admin credentials for demo
-  const adminCredentials = {
-    email: 'admin@example.com',
-    password: 'admin',
+  // Demo credentials
+  const demoCredentials = {
+    admin: { email: 'admin@fra-atlas.gov.in', password: 'admin123' },
+    officer: { email: 'officer@fra-atlas.gov.in', password: 'officer123' }
   };
 
   useEffect(() => {
@@ -85,9 +86,12 @@ const Auth: React.FC = () => {
     setLoading(false);
   };
 
-  const handleDemoLogin = (demoRole: string) => {
-    setEmail(adminCredentials.email);
-    setPassword(adminCredentials.password);
+  const handleDemoLogin = (demoRole: 'admin' | 'officer') => {
+    const credentials = demoCredentials[demoRole];
+    setEmail(credentials.email);
+    setPassword(credentials.password);
+    setRole(demoRole);
+    
     // Auto-fill the form and trigger sign in
     setTimeout(() => {
       handleSignIn({ preventDefault: () => {} } as React.FormEvent);
@@ -96,14 +100,23 @@ const Auth: React.FC = () => {
 
   const getRoleIcon = (roleName: string) => {
     switch (roleName) {
-      case 'Admin':
+      case 'admin':
         return <Shield className="w-4 h-4" />;
-      case 'Dept Officer':
+      case 'officer':
         return <Building className="w-4 h-4" />;
-      case 'NGO':
-        return <Users className="w-4 h-4" />;
       default:
         return <Users className="w-4 h-4" />;
+    }
+  };
+
+  const getRoleDescription = (roleName: string) => {
+    switch (roleName) {
+      case 'admin':
+        return 'Full system access, user management, and administrative functions';
+      case 'officer':
+        return 'View and manage claims, upload documents, and generate reports';
+      default:
+        return '';
     }
   };
 
@@ -111,11 +124,15 @@ const Auth: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold tracking-tight">Forest Rights App</h1>
-          <p className="text-muted-foreground mt-2">Sign in to access your dashboard</p>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <MapPin className="w-8 h-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight">FRA Atlas</h1>
+          </div>
+          <p className="text-muted-foreground mt-2">Forest Rights Act Implementation Platform</p>
+          <Badge variant="outline" className="mt-2">Prototype v1.0</Badge>
         </div>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-lg border-0 bg-card/50 backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">Authentication</CardTitle>
             <CardDescription>Choose your access method below</CardDescription>
@@ -145,19 +162,36 @@ const Auth: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signin-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   {error && (
@@ -166,8 +200,15 @@ const Auth: React.FC = () => {
                     </Alert>
                   )}
 
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Signing in...' : 'Sign In'}
+                  <Button type="submit" className="w-full transition-all duration-200 hover:scale-[1.02]" disabled={loading}>
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Signing in...
+                      </div>
+                    ) : (
+                      'Sign In'
+                    )}
                   </Button>
                 </form>
 
@@ -176,37 +217,30 @@ const Auth: React.FC = () => {
                     <Separator className="w-full" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Demo Access</span>
+                    <span className="bg-card px-2 text-muted-foreground">Demo Access</span>
                   </div>
                 </div>
 
                 <div className="grid gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => handleDemoLogin('Admin')}
-                    className="flex items-center justify-start gap-2"
+                    onClick={() => handleDemoLogin('admin')}
+                    className="flex items-center justify-start gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
                     disabled={loading}
                   >
-                    {getRoleIcon('Admin')}
+                    {getRoleIcon('admin')}
                     <span>Demo as Admin</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">Full Access</Badge>
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => handleDemoLogin('Dept Officer')}
-                    className="flex items-center justify-start gap-2"
+                    onClick={() => handleDemoLogin('officer')}
+                    className="flex items-center justify-start gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md"
                     disabled={loading}
                   >
-                    {getRoleIcon('Dept Officer')}
-                    <span>Demo as Dept Officer</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDemoLogin('NGO')}
-                    className="flex items-center justify-start gap-2"
-                    disabled={loading}
-                  >
-                    {getRoleIcon('NGO')}
-                    <span>Demo as NGO</span>
+                    {getRoleIcon('officer')}
+                    <span>Demo as Officer</span>
+                    <Badge variant="secondary" className="ml-auto text-xs">View Only</Badge>
                   </Button>
                 </div>
               </TabsContent>
@@ -222,6 +256,7 @@ const Auth: React.FC = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
 
@@ -234,44 +269,61 @@ const Auth: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="pr-10 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="signup-role">Role</Label>
-                    <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                      <SelectTrigger>
+                    <Select value={role} onValueChange={(value) => setRole(value as 'admin' | 'officer')}>
+                      <SelectTrigger className="transition-all duration-200 focus:ring-2 focus:ring-primary/20">
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="NGO">
+                        <SelectItem value="officer">
                           <div className="flex items-center gap-2">
-                            {getRoleIcon('NGO')}
-                            NGO
+                            {getRoleIcon('officer')}
+                            <div>
+                              <div>Field Officer</div>
+                              <div className="text-xs text-muted-foreground">{getRoleDescription('officer')}</div>
+                            </div>
                           </div>
                         </SelectItem>
-                        <SelectItem value="Dept Officer">
+                        <SelectItem value="admin">
                           <div className="flex items-center gap-2">
-                            {getRoleIcon('Dept Officer')}
-                            Department Officer
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Admin">
-                          <div className="flex items-center gap-2">
-                            {getRoleIcon('Admin')}
-                            Administrator
+                            {getRoleIcon('admin')}
+                            <div>
+                              <div>Administrator</div>
+                              <div className="text-xs text-muted-foreground">{getRoleDescription('admin')}</div>
+                            </div>
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -284,8 +336,15 @@ const Auth: React.FC = () => {
                     </Alert>
                   )}
 
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Creating account...' : 'Create Account'}
+                  <Button type="submit" className="w-full transition-all duration-200 hover:scale-[1.02]" disabled={loading}>
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        Creating account...
+                      </div>
+                    ) : (
+                      'Create Account'
+                    )}
                   </Button>
                 </form>
               </TabsContent>
